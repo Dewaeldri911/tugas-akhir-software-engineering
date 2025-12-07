@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>E-Commerce (Simple Frontend)</title>
+  <style>
+    /* ---------- Reset & layout ---------- */
+    :root{--accent:#2b7cff;--muted:#666;--card:#fff;--bg:#f4f6fb}
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial; margin:0; background:var(--bg); color:#111}
+    .container{max-width:980px;margin:28px auto;padding:20px}
+
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    header h1{margin:0;font-size:20px}
+    header .actions{display:flex;gap:8px;align-items:center}
+
+    /* ---------- Card ---------- */
+    .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(30,40,60,0.06);margin-bottom:16px}
+
+    /* ---------- Forms ---------- */
+    .form-row{display:flex;gap:8px;margin-bottom:8px}
+    .form-row input, .form-row select{flex:1;padding:8px;border-radius:6px;border:1px solid #e3e6ee}
+    button{background:var(--accent);color:#fff;border:0;padding:8px 12px;border-radius:8px;cursor:pointer}
+    button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+    .muted{color:var(--muted);font-size:13px}
+
+    /* ---------- Products grid ---------- */
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+    .product{padding:12px;border-radius:10px;border:1px solid #eef2ff;background:#fff;display:flex;flex-direction:column;gap:8px}
+    .product h3{margin:0;font-size:16px}
+    .price{font-weight:700;color:#0b6bff}
+    .stock{font-size:13px;color:var(--muted)}
+
+    /* ---------- Cart ---------- */
+    .cart-list{display:flex;flex-direction:column;gap:8px}
+    .cart-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;border:1px solid #eaeef8;background:#fff}
+
+    /* ---------- Notices ---------- */
+    .notice{padding:10px;border-radius:8px;margin-bottom:12px}
+    .notice.error{background:#fff1f0;color:#8b1b1b;border:1px solid #ffd6d6}
+    .notice.success{background:#f0fff4;color:#0a662a;border:1px solid #d1ffd6}
+
+    /* ---------- small helpers ---------- */
+    .right{margin-left:auto}
+    .hidden{display:none}
+    footer{margin-top:28px;text-align:center;color:var(--muted);font-size:13px}
+    @media (max-width:560px){ .form-row{flex-direction:column} }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Mini E-Commerce</h1>
+      <div class="actions">
+        <div id="userInfo" class="muted">Belum login</div>
+        <button id="btnLogout" class="ghost hidden">Logout</button>
+      </div>
+    </header>
+
+    <!-- Notices -->
+    <div id="notice" class="hidden"></div>
+
+    <!-- Auth area -->
+    <div id="authArea" class="card">
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          <h3>Register</h3>
+          <div class="form-row">
+            <input id="regName" placeholder="Nama" />
+            <select id="regRole"><option value="customer">Customer</option><option value="seller">Seller</option></select>
+          </div>
+          <div class="form-row">
+            <input id="regEmail" placeholder="Email" />
+            <input id="regPassword" placeholder="Password" type="password" />
+          </div>
+          <button id="btnRegister">Daftar</button>
+        </div>
+
+        <div style="flex:1;min-width:220px">
+          <h3>Login</h3>
+          <div class="form-row">
+            <input id="loginEmail" placeholder="Email" />
+            <input id="loginPassword" placeholder="Password" type="password" />
+          </div>
+          <button id="btnLogin">Login</button>
+        </div>
+      </div>
+      <p class="muted" style="margin-top:12px">Note: Coba register 1 seller dan 1 customer lalu login masing-masing.</p>
+    </div>
+
+    <!-- Seller product form -->
+    <div id="sellerArea" class="card hidden">
+      <h3>Tambah Produk (Seller)</h3>
+      <div class="form-row">
+        <input id="pName" placeholder="Nama produk" />
+        <input id="pPrice" placeholder="Harga (angka)" type="number" />
+      </div>
+      <div class="form-row">
+        <input id="pStock" placeholder="Stok" type="number" />
+        <button id="btnCreateProduct">Tambah Produk</button>
+      </div>
+    </div>
+
+    <!-- Products -->
+    <div class="card">
+      <h3>Daftar Produk</h3>
+      <div id="products" class="grid"></div>
+      <p id="noProducts" class="muted hidden">Belum ada produk.</p>
+    </div>
+
+    <!-- Cart -->
+    <div class="card">
+      <h3>Keranjang</h3>
+      <div id="cart" class="cart-list"></div>
+      <p id="cartEmpty" class="muted">Keranjang kosong.</p>
+      <div style="margin-top:8px">
+        <button id="btnRefreshCart" class="ghost">Refresh Cart</button>
+      </div>
+    </div>
+
+    <footer>Frontend sederhana — terhubung ke <code>http://localhost:3000</code></footer>
+  </div>
+
+  <script>
+    // ====== Config ======
+    const API_BASE = 'http://localhost:3000';
+
+    // ====== Helpers ======
+    function showNotice(text, type='error') {
+      const n = document.getElementById('notice');
+      n.className = 'notice ' + (type === 'success' ? 'success' : 'error');
+      n.textContent = text;
+      n.classList.remove('hidden');
+      setTimeout(() => n.classList.add('hidden'), 4000);
+    }
+
+    function saveToken(t){ localStorage.setItem('token', t); }
+    function getToken(){ return localStorage.getItem('token'); }
+    function removeToken(){ localStorage.removeItem('token'); }
+
+    // Quick decode JWT payload (no verification) to get role/id
+    function decodeJWT(token) {
+      if (!token) return null;
+      try {
+        const payload = token.split('.')[1];
+        const json = atob(payload.replace(/-/g,'+').replace(/_/g,'/'));
+        return JSON.parse(decodeURIComponent(escape(json)));
+      } catch(e){ return null; }
+    }
+
+    // Set UI according to login state
+    function refreshUI() {
+      const token = getToken();
+      const userInfo = document.getElementById('userInfo');
+      const btnLogout = document.getElementById('btnLogout');
+      const authArea = document.getElementById('authArea');
+      const sellerArea = document.getElementById('sellerArea');
+
+      if (!token) {
+        userInfo.textContent = 'Belum login';
+        btnLogout.classList.add('hidden');
+        authArea.classList.remove('hidden');
+        sellerArea.classList.add('hidden');
+      } else {
+        const payload = decodeJWT(token);
+        userInfo.textContent = (payload?.role || 'user') + ' — id:' + (payload?.id || '?');
+        btnLogout.classList.remove('hidden');
+        authArea.classList.add('hidden');
+
+        if (payload?.role === 'seller') {
+          sellerArea.classList.remove('hidden');
+        } else {
+          sellerArea.classList.add('hidden');
+        }
+      }
+    }
+
+    // ====== API calls ======
+    async function api(path, opts = {}) {
+      const token = getToken();
+      opts.headers = opts.headers || {};
+      if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+      opts.headers['Content-Type'] = opts.headers['Content-Type'] || 'application/json';
+      const res = await fetch(API_BASE + path, opts);
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = text;
+        try { msg = JSON.parse(text); } catch {}
+        throw { status: res.status, data: msg };
+      }
+      // if no body
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) return res.json();
+      return res.text();
+    }
+
+    // ====== Actions ======
+    async function register() {
+      const name = document.getElementById('regName').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const role = document.getElementById('regRole').value;
+      if (!name || !email || !password) return showNotice('Lengkapi data register');
+      try {
+        const result = await api('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password, role }) });
+        showNotice('Register sukses — silakan login', 'success');
+        document.getElementById('regName').value = '';
+        document.getElementById('regEmail').value = '';
+        document.getElementById('regPassword').value = '';
+      } catch(err) {
+        showNotice('Register gagal: ' + JSON.stringify(err.data || err));
+      }
+    }
+
+    async function login() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      if (!email || !password) return showNotice('Lengkapi login');
+      try {
+        const res = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+        saveToken(res.token);
+        refreshUI();
+        await loadProducts();
+        await loadCart();
+        showNotice('Login berhasil', 'success');
+      } catch(err) {
+        showNotice('Login gagal: ' + (err.data?.message || JSON.stringify(err.data) || err.status));
+      }
+    }
+
+    async function logout() {
+      removeToken();
+      refreshUI();
+      showNotice('Logout');
+    }
+
+    async function loadProducts() {
+      try {
+        const products = await api('/products', { method: 'GET' });
+        const container = document.getElementById('products');
+        container.innerHTML = '';
+        if (!products || products.length === 0) {
+          document.getElementById('noProducts').classList.remove('hidden');
+          return;
+        } else document.getElementById('noProducts').classList.add('hidden');
+
+        const payload = decodeJWT(getToken());
+        products.forEach(p => {
+          const div = document.createElement('div');
+          div.className = 'product';
+          div.innerHTML = `
+            <h3>${escapeHtml(p.name)}</h3>
+            <div class="price">Rp ${Number(p.price).toLocaleString()}</div>
+            <div class="stock">Stok: ${p.stock ?? 0} • Seller ID: ${p.sellerId ?? '-'}</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="btnAdd">Add to cart</button>
+            </div>
+          `;
+          const btn = div.querySelector('.btnAdd');
+          if (!payload || payload.role !== 'customer') {
+            btn.disabled = true;
+            btn.textContent = payload?.role === 'seller' ? 'Untuk customer' : 'Login untuk beli';
+            btn.classList.add('ghost');
+          } else {
+            btn.addEventListener('click', () => addToCart(p.id));
+          }
+          container.appendChild(div);
+        });
+      } catch(err) {
+        showNotice('Gagal ambil produk: ' + (err.data?.message || err.status));
+      }
+    }
+
+    async function createProduct() {
+      const name = document.getElementById('pName').value.trim();
+      const price = Number(document.getElementById('pPrice').value);
+      const stock = Number(document.getElementById('pStock').value);
+      if (!name || !price) return showNotice('Isi nama & harga produk');
+      try {
+        const res = await api('/products', { method: 'POST', body: JSON.stringify({ name, price, stock }) });
+        showNotice('Produk berhasil ditambahkan', 'success');
+        document.getElementById('pName').value = '';
+        document.getElementById('pPrice').value = '';
+        document.getElementById('pStock').value = '';
+        await loadProducts();
+      } catch(err) {
+        showNotice('Gagal tambah produk: ' + JSON.stringify(err.data || err));
+      }
+    }
+
+    async function addToCart(productId) {
+      try {
+        await api('/cart', { method: 'POST', body: JSON.stringify({ productId, quantity: 1 }) });
+        showNotice('Ditambahkan ke keranjang', 'success');
+        await loadCart();
+      } catch(err) {
+        showNotice('Gagal tambah ke cart: ' + JSON.stringify(err.data || err));
+      }
+    }
+
+    async function loadCart() {
+      const cartEl = document.getElementById('cart');
+      try {
+        const items = await api('/cart', { method: 'GET' });
+        cartEl.innerHTML = '';
+        if (!items || items.length === 0) {
+          document.getElementById('cartEmpty').style.display = 'block';
+          return;
+        } else document.getElementById('cartEmpty').style.display = 'none';
+
+        items.forEach(it => {
+          const row = document.createElement('div');
+          row.className = 'cart-item';
+          row.innerHTML = `<div>${escapeHtml(String(it.productId))} • qty: ${it.quantity}</div>
+                           <div class="muted">cartId:${it.id}</div>`;
+          cartEl.appendChild(row);
+        });
+      } catch(err) {
+        cartEl.innerHTML = '';
+        document.getElementById('cartEmpty').style.display = 'block';
+        // don't always show as error, cart might require login
+      }
+    }
+
+    // small helper to guard XSS in product names
+    function escapeHtml(s){ return (s+'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) }
+
+    // ====== Events binding ======
+    document.getElementById('btnRegister').addEventListener('click', register);
+    document.getElementById('btnLogin').addEventListener('click', login);
+    document.getElementById('btnLogout').addEventListener('click', logout);
+    document.getElementById('btnCreateProduct').addEventListener('click', createProduct);
+    document.getElementById('btnRefreshCart').addEventListener('click', loadCart);
+
+    // initial load
+    (async function init(){
+      refreshUI();
+      await loadProducts();
+      await loadCart();
+    })();
+  </script>
+</body>
+</html>
