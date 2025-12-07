@@ -1,0 +1,7 @@
+# 🔄 FLOW APLIKASI
+1. User login/registrasi.
+2. Admin & customer diarahkan ke dashboard masing-masing.
+3. Admin kelola data, customer menggunakan aplikasi.
+
+## Arsitektur
+Frontend (React/Next.js) ↔ Backend (Laravel/Express.js) ↔ Database (MySQL/MongoDB)
