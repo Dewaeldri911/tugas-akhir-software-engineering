@@ -16,7 +16,7 @@ project yang kami pilih yaitu E-Commerce, aplikasi yang melakukan penjualan seca
 - Database: MySQL
 
 ## 🚀 Cara Menjalankan Project
-1. Clone repository:
+1. Clone repository: tugas akhirnya ada di kode tersebut
    ```bash
    [git clone https://github.com/username/project-name.git](https://github.com/dqueta/Tugas-Softeng.git)
    ```
