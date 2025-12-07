@@ -18,7 +18,7 @@ project yang kami pilih yaitu E-Commerce, aplikasi yang melakukan penjualan seca
 ## 🚀 Cara Menjalankan Project
 1. Clone repository:
    ```bash
-   git clone https://github.com/username/project-name.git
+   [git clone https://github.com/username/project-name.git](https://github.com/dqueta/Tugas-Softeng.git)
    ```
 2. Jalankan backend dan frontend sesuai dokumentasi.
 3. Buka di browser: http://localhost:3000
